@@ -286,7 +286,7 @@ func (s *Session) Addr() net.Addr {
 	}); ok {
 		return ts.Addr()
 	}
-	return nil
+	return s.LocalAddr()
 }
 
 // LocalAddr satisfies net.Conn interface
