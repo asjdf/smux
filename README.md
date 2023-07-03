@@ -17,6 +17,10 @@
 [11]: https://sourcegraph.com/github.com/xtaci/smux/-/badge.svg
 [12]: https://sourcegraph.com/github.com/xtaci/smux?badge
 
+## What's different?
+
+This branch aims to make smux.Session can replace net.Listener directly.
+
 ## Introduction
 
 Smux ( **S**imple **MU**ltiple**X**ing) is a multiplexing library for Golang. It relies on an underlying connection to provide reliability and ordering, such as TCP or [KCP](https://github.com/xtaci/kcp-go), and provides stream-oriented multiplexing. The original intention of this library is to power the connection management for [kcp-go](https://github.com/xtaci/kcp-go).

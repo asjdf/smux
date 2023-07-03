@@ -45,6 +45,8 @@ type writeResult struct {
 	err error
 }
 
+var _ net.Listener = (*Session)(nil)
+
 // Session defines a multiplexed connection for streams
 type Session struct {
 	conn io.ReadWriteCloser
@@ -191,7 +193,7 @@ func (s *Session) AcceptStream() (*Stream, error) {
 }
 
 // Accept Returns a generic ReadWriteCloser instead of smux.Stream
-func (s *Session) Accept() (io.ReadWriteCloser, error) {
+func (s *Session) Accept() (net.Conn, error) {
 	return s.AcceptStream()
 }
 
@@ -274,6 +276,16 @@ func (s *Session) NumStreams() int {
 // A zero time value disables the deadline.
 func (s *Session) SetDeadline(t time.Time) error {
 	s.deadline.Store(t)
+	return nil
+}
+
+// Addr returns the listener's network address.
+func (s *Session) Addr() net.Addr {
+	if ts, ok := s.conn.(interface {
+		Addr() net.Addr
+	}); ok {
+		return ts.Addr()
+	}
 	return nil
 }
 
@@ -364,7 +376,7 @@ func (s *Session) recvLoop() {
 					if written, err := io.ReadFull(s.conn, newbuf); err == nil {
 						s.streamLock.Lock()
 						if stream, ok := s.streams[sid]; ok {
-							stream.pushBytes(newbuf)
+							_, _ = stream.pushBytes(newbuf)
 							atomic.AddInt32(&s.bucket, -int32(written))
 							stream.notifyReadEvent()
 						}
@@ -404,14 +416,14 @@ func (s *Session) keepalive() {
 	for {
 		select {
 		case <-tickerPing.C:
-			s.writeFrameInternal(newFrame(byte(s.config.Version), cmdNOP, 0), tickerPing.C, CLSCTRL)
+			_, _ = s.writeFrameInternal(newFrame(byte(s.config.Version), cmdNOP, 0), tickerPing.C, CLSCTRL)
 			s.notifyBucket() // force a signal to the recvLoop
 		case <-tickerTimeout.C:
 			if !atomic.CompareAndSwapInt32(&s.dataReady, 1, 0) {
 				// recvLoop may block while bucket is 0, in this case,
 				// session should not be closed.
 				if atomic.LoadInt32(&s.bucket) > 0 {
-					s.Close()
+					_ = s.Close()
 					return
 				}
 			}
