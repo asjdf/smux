@@ -97,7 +97,7 @@ func (s *Stream) tryRead(b []byte) (n int, err error) {
 			s.buffers[0] = nil
 			s.buffers = s.buffers[1:]
 			// full recycle
-			defaultAllocator.Put(s.heads[0])
+			_ = defaultAllocator.Put(s.heads[0])
 			s.heads = s.heads[1:]
 		}
 	}
@@ -130,7 +130,7 @@ func (s *Stream) tryReadv2(b []byte) (n int, err error) {
 			s.buffers[0] = nil
 			s.buffers = s.buffers[1:]
 			// full recycle
-			defaultAllocator.Put(s.heads[0])
+			_ = defaultAllocator.Put(s.heads[0])
 			s.heads = s.heads[1:]
 		}
 	}
@@ -186,7 +186,7 @@ func (s *Stream) WriteTo(w io.Writer) (n int64, err error) {
 		if buf != nil {
 			nw, ew := w.Write(buf)
 			s.sess.returnTokens(len(buf))
-			defaultAllocator.Put(buf)
+			_ = defaultAllocator.Put(buf)
 			if nw > 0 {
 				n += int64(nw)
 			}
@@ -221,7 +221,7 @@ func (s *Stream) writeTov2(w io.Writer) (n int64, err error) {
 		if buf != nil {
 			nw, ew := w.Write(buf)
 			s.sess.returnTokens(len(buf))
-			defaultAllocator.Put(buf)
+			_ = defaultAllocator.Put(buf)
 			if nw > 0 {
 				n += int64(nw)
 			}
@@ -515,7 +515,7 @@ func (s *Stream) recycleTokens() (n int) {
 	s.bufferLock.Lock()
 	for k := range s.buffers {
 		n += len(s.buffers[k])
-		defaultAllocator.Put(s.heads[k])
+		_ = defaultAllocator.Put(s.heads[k])
 	}
 	s.buffers = nil
 	s.heads = nil

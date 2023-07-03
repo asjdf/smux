@@ -15,11 +15,14 @@ func (b *buffer) Close() error {
 }
 
 func TestConfig(t *testing.T) {
-	VerifyConfig(DefaultConfig())
+	err := VerifyConfig(DefaultConfig())
+	if err != nil {
+		t.Error(err)
+	}
 
 	config := DefaultConfig()
 	config.KeepAliveInterval = 0
-	err := VerifyConfig(config)
+	err = VerifyConfig(config)
 	t.Log(err)
 	if err == nil {
 		t.Fatal(err)

@@ -2,7 +2,10 @@ package smux
 
 import (
 	"errors"
+	"reflect"
+	"runtime"
 	"sync"
+	"unsafe"
 )
 
 var (
@@ -35,17 +38,25 @@ func NewAllocator() *Allocator {
 }
 
 // Get a []byte from pool with most appropriate cap
-func (alloc *Allocator) Get(size int) []byte {
+func (alloc *Allocator) Get(size int) (buf []byte) {
 	if size <= 0 || size > 65536 {
 		return nil
 	}
 
 	bits := msb(size)
-	if size == 1<<bits {
-		return alloc.buffers[bits].Get().([]byte)[:size]
-	} else {
-		return alloc.buffers[bits+1].Get().([]byte)[:size]
+	if size != 1<<bits {
+		bits += 1
 	}
+	ptr, _ := alloc.buffers[bits].Get().(unsafe.Pointer)
+	if ptr == nil {
+		return make([]byte, 1<<bits)[:size]
+	}
+	sh := (*reflect.SliceHeader)(unsafe.Pointer(&buf))
+	sh.Data = uintptr(ptr)
+	sh.Len = size
+	sh.Cap = 1 << bits
+	runtime.KeepAlive(ptr)
+	return
 }
 
 // Put returns a []byte to pool for future use,
@@ -55,7 +66,7 @@ func (alloc *Allocator) Put(buf []byte) error {
 	if cap(buf) == 0 || cap(buf) > 65536 || cap(buf) != 1<<bits {
 		return errors.New("allocator Put() incorrect buffer size")
 	}
-	alloc.buffers[bits].Put(buf)
+	alloc.buffers[bits].Put(unsafe.Pointer(&buf[:1][0]))
 	return nil
 }
 
